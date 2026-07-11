@@ -123,6 +123,7 @@ fun BrowserApp(viewModel: BrowserViewModel) {
     // Dropdown menu state
     var isMenuExpanded by remember { mutableStateOf(false) }
     var showAiHubDialog by remember { mutableStateOf(false) }
+    var showSiteInfoDialog by remember { mutableStateOf(false) }
 
     // Find in page state
     var showFindInPage by remember { mutableStateOf(false) }
@@ -385,7 +386,13 @@ fun BrowserApp(viewModel: BrowserViewModel) {
                                 imageVector = if (activeTab.url.startsWith("https://")) Icons.Default.Lock else Icons.Default.Public,
                                 contentDescription = "Security Indicator",
                                 tint = if (activeTab.url.startsWith("https://")) Color(0xFF34D399) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clickable {
+                                        if (!activeTab.url.startsWith("lite://")) {
+                                            showSiteInfoDialog = true
+                                        }
+                                    }
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             BasicTextField(
@@ -837,6 +844,29 @@ fun BrowserApp(viewModel: BrowserViewModel) {
                 } else {
                     viewModel.createNewTab(url, isIncognito = activeTab?.isIncognito == true)
                 }
+            }
+        )
+    }
+
+    if (showSiteInfoDialog && activeTab != null) {
+        SiteInfoDialog(
+            url = activeTab.url,
+            onDismiss = { showSiteInfoDialog = false },
+            onClearData = {
+                val origin = android.net.Uri.parse(activeTab.url).host ?: ""
+                android.webkit.WebStorage.getInstance().deleteOrigin(activeTab.url)
+                val cookieManager = android.webkit.CookieManager.getInstance()
+                val cookies = cookieManager.getCookie(activeTab.url)
+                if (cookies != null) {
+                    val cookieList = cookies.split(";")
+                    for (cookie in cookieList) {
+                        val cookieName = cookie.substringBefore("=").trim()
+                        cookieManager.setCookie(activeTab.url, "$cookieName=; expires=Thu, 01 Jan 1970 00:00:00 GMT")
+                    }
+                    cookieManager.flush()
+                }
+                showSiteInfoDialog = false
+                toastText = "Site data cleared for $origin"
             }
         )
     }

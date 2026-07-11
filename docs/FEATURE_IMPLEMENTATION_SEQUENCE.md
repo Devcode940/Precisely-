@@ -59,10 +59,16 @@ Files:
 
 ### 4. Site Info / Security Panel
 
-Planned scope:
+Status: Implemented
+
+Scope:
 - Tap lock/public icon
 - Show URL, HTTPS status, cookies, JavaScript, mixed-content policy
 - Clear data for current site
+
+Files:
+- `MainActivity.kt`
+- `SiteInfoDialog.kt`
 
 ### 5. Per-Site Permissions
 
