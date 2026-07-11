@@ -51,3 +51,12 @@ data class UserSettingEntity(
     @PrimaryKey val key: String,
     val value: String
 )
+
+@Entity(tableName = "site_permissions", indices = [Index(value = ["origin", "permission"], unique = true)])
+data class SitePermissionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val origin: String,
+    val permission: String,
+    val isAllowed: Boolean,
+    val timestamp: Long = System.currentTimeMillis()
+)

@@ -72,10 +72,19 @@ Files:
 
 ### 5. Per-Site Permissions
 
-Planned scope:
-- Camera/microphone/location request handling
+Status: Implemented
+
+Scope:
+- Camera/microphone/location handling
 - User prompts
 - Per-site allow/block list
+
+Files:
+- `AppDatabase.kt` (schema v3)
+- `AppDaos.kt` (SitePermissionDao)
+- `BrowserRepository.kt`
+- `BrowserViewModel.kt`
+- `MainActivity.kt`
 
 ### 6. Session Restore
 

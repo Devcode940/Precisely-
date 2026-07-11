@@ -83,3 +83,21 @@ interface SettingDao {
     @Query("DELETE FROM user_settings")
     suspend fun clearAllSettings()
 }
+
+@Dao
+interface SitePermissionDao {
+    @Query("SELECT * FROM site_permissions WHERE origin = :origin")
+    suspend fun getPermissionsForOrigin(origin: String): List<SitePermissionEntity>
+
+    @Query("SELECT isAllowed FROM site_permissions WHERE origin = :origin AND permission = :permission LIMIT 1")
+    suspend fun isPermissionAllowed(origin: String, permission: String): Boolean?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun savePermission(permission: SitePermissionEntity)
+
+    @Delete
+    suspend fun deletePermission(permission: SitePermissionEntity)
+
+    @Query("DELETE FROM site_permissions WHERE origin = :origin")
+    suspend fun clearPermissionsForOrigin(origin: String)
+}

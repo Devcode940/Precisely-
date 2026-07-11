@@ -11,9 +11,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HistoryEntity::class,
         PasswordEntity::class,
         DownloadEntity::class,
-        UserSettingEntity::class
+        UserSettingEntity::class,
+        SitePermissionEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -22,6 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun passwordDao(): PasswordDao
     abstract fun downloadDao(): DownloadDao
     abstract fun settingDao(): SettingDao
+    abstract fun sitePermissionDao(): SitePermissionDao
 
     companion object {
         @Volatile
@@ -40,6 +42,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `site_permissions` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `origin` TEXT NOT NULL,
+                        `permission` TEXT NOT NULL,
+                        `isAllowed` INTEGER NOT NULL,
+                        `timestamp` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_site_permissions_origin_permission` ON `site_permissions` (`origin`, `permission`)")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -47,7 +64,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "chromium_lite_database"
                 )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
                 INSTANCE = instance
                 instance

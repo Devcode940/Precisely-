@@ -43,6 +43,27 @@ data class TabState(
     val isIncognito: Boolean = false
 )
 
+data class PendingPermissionRequest(
+    val origin: String,
+    val resources: Array<String>,
+    val onGrant: () -> Unit,
+    val onDeny: () -> Unit
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+        other as PendingPermissionRequest
+        if (origin != other.origin) return false
+        if (!resources.contentEquals(other.resources)) return false
+        return true
+    }
+    override fun hashCode(): Int {
+        var result = origin.hashCode()
+        result = 31 * result + resources.contentHashCode()
+        return result
+    }
+}
+
 class BrowserViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: BrowserRepository
     private val httpClient = OkHttpClient.Builder()
@@ -62,6 +83,9 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
 
     private val _vaultLocked = MutableStateFlow(true)
     val vaultLocked: StateFlow<Boolean> = _vaultLocked.asStateFlow()
+
+    private val _pendingPermission = MutableStateFlow<PendingPermissionRequest?>(null)
+    val pendingPermission: StateFlow<PendingPermissionRequest?> = _pendingPermission.asStateFlow()
 
     private val downloadJobs = mutableMapOf<String, Job>()
     private var vaultKey: SecretKeySpec? = null
@@ -672,5 +696,37 @@ class BrowserViewModel(application: Application) : AndroidViewModel(application)
             index++
         }
         return candidate
+    }
+
+    fun requestSitePermission(origin: String, resources: Array<String>, onGrant: () -> Unit, onDeny: () -> Unit) {
+        viewModelScope.launch {
+            val resourceStr = resources.joinToString(",")
+            val isAllowed = repository.isPermissionAllowed(origin, resourceStr)
+            
+            if (isAllowed == true) {
+                onGrant()
+            } else if (isAllowed == false) {
+                onDeny()
+            } else {
+                _pendingPermission.value = PendingPermissionRequest(origin, resources, onGrant, onDeny)
+            }
+        }
+    }
+
+    fun resolveSitePermission(allow: Boolean, remember: Boolean) {
+        val req = _pendingPermission.value ?: return
+        _pendingPermission.value = null
+        if (allow) {
+            req.onGrant()
+        } else {
+            req.onDeny()
+        }
+        
+        if (remember) {
+            viewModelScope.launch {
+                val resourceStr = req.resources.joinToString(",")
+                repository.saveSitePermission(SitePermissionEntity(origin = req.origin, permission = resourceStr, isAllowed = allow))
+            }
+        }
     }
 }

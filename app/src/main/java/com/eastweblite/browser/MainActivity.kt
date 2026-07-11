@@ -100,6 +100,7 @@ fun BrowserApp(viewModel: BrowserViewModel) {
     val tabs by viewModel.tabs.collectAsState()
     val activeTabId by viewModel.activeTabId.collectAsState()
     val settingsMap by viewModel.settingsMap.collectAsState()
+    val pendingPermission by viewModel.pendingPermission.collectAsState()
 
     val langCode = settingsMap["language"] ?: "en"
     val showBB = settingsMap["show_bookmarks_bar"] == "true"
@@ -797,6 +798,27 @@ fun BrowserApp(viewModel: BrowserViewModel) {
                                             override fun onReceivedTitle(view: WebView?, title: String?) {
                                                 title?.let { viewModel.updateTabTitleOnly(activeTab.id, it) }
                                             }
+
+                                            override fun onPermissionRequest(request: android.webkit.PermissionRequest?) {
+                                                if (request == null) return
+                                                val origin = request.origin.toString()
+                                                viewModel.requestSitePermission(
+                                                    origin = origin,
+                                                    resources = request.resources,
+                                                    onGrant = { request.grant(request.resources) },
+                                                    onDeny = { request.deny() }
+                                                )
+                                            }
+                                            
+                                            override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: android.webkit.GeolocationPermissions.Callback?) {
+                                                if (origin == null || callback == null) return
+                                                viewModel.requestSitePermission(
+                                                    origin = origin,
+                                                    resources = arrayOf("geolocation"),
+                                                    onGrant = { callback.invoke(origin, true, false) },
+                                                    onDeny = { callback.invoke(origin, false, false) }
+                                                )
+                                            }
                                         }
 
                                         setFindListener { activeMatchOrdinal, numberOfMatches, _ ->
@@ -867,6 +889,42 @@ fun BrowserApp(viewModel: BrowserViewModel) {
                 }
                 showSiteInfoDialog = false
                 toastText = "Site data cleared for $origin"
+            }
+        )
+    }
+
+    pendingPermission?.let { req ->
+        AlertDialog(
+            onDismissRequest = { viewModel.resolveSitePermission(allow = false, remember = false) },
+            title = {
+                Text("Site Permission Request", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            },
+            text = {
+                Column {
+                    Text("${req.origin} wants to use:")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    req.resources.forEach { res ->
+                        val friendlyName = when (res) {
+                            "geolocation" -> "Location"
+                            android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE -> "Microphone"
+                            android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE -> "Camera"
+                            android.webkit.PermissionRequest.RESOURCE_MIDI_SYSEX -> "MIDI"
+                            android.webkit.PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> "Protected Media"
+                            else -> res
+                        }
+                        Text("• $friendlyName", fontWeight = FontWeight.Medium)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.resolveSitePermission(allow = true, remember = true) }) {
+                    Text("Allow", color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.resolveSitePermission(allow = false, remember = true) }) {
+                    Text("Block", color = MaterialTheme.colorScheme.error)
+                }
             }
         )
     }

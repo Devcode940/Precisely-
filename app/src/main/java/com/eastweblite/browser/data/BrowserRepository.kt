@@ -10,6 +10,7 @@ class BrowserRepository(private val db: AppDatabase) {
     private val passwordDao = db.passwordDao()
     private val downloadDao = db.downloadDao()
     private val settingDao = db.settingDao()
+    private val sitePermissionDao = db.sitePermissionDao()
 
     val allBookmarks: Flow<List<BookmarkEntity>> = bookmarkDao.getAllBookmarks()
     val allHistory: Flow<List<HistoryEntity>> = historyDao.getAllHistory()
@@ -83,5 +84,21 @@ class BrowserRepository(private val db: AppDatabase) {
 
     suspend fun clearAllSettings() = withContext(Dispatchers.IO) {
         settingDao.clearAllSettings()
+    }
+
+    suspend fun getPermissionsForOrigin(origin: String): List<SitePermissionEntity> = withContext(Dispatchers.IO) {
+        sitePermissionDao.getPermissionsForOrigin(origin)
+    }
+
+    suspend fun isPermissionAllowed(origin: String, permission: String): Boolean? = withContext(Dispatchers.IO) {
+        sitePermissionDao.isPermissionAllowed(origin, permission)
+    }
+
+    suspend fun saveSitePermission(permission: SitePermissionEntity) = withContext(Dispatchers.IO) {
+        sitePermissionDao.savePermission(permission)
+    }
+
+    suspend fun clearPermissionsForOrigin(origin: String) = withContext(Dispatchers.IO) {
+        sitePermissionDao.clearPermissionsForOrigin(origin)
     }
 }
