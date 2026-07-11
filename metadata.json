@@ -1,0 +1,6 @@
+{
+  "name": "Precisly",
+  "description": "Experimental Android WebView browser with multi-tab management, encrypted local vault, real downloads, bookmarks, search options, incognito controls, and PDF viewing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
